@@ -1,0 +1,3 @@
+[gui_scripts]
+SurfaceCRNQueueSimulator = surface_crns.SurfaceCRNQueueSimulator:main
+

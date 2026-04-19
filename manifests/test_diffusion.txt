@@ -1,0 +1,24 @@
+# Minimal diffusion test: a single "agent" diffuses on an empty grid.
+# Just to verify our syntax and environment.
+
+pixels_per_node    = 20
+speedup_factor     = 5
+max_duration       = 100
+node_display       = Color
+
+!START_COLORMAP
+{empty} O: (240, 240, 240)
+{agent} A: (255, 0, 0)
+!END_COLORMAP
+
+!START_TRANSITION_RULES
+A + O -> O + A (1)
+!END_TRANSITION_RULES
+
+!START_INIT_STATE
+O O O O O
+O O O O O
+O O A O O
+O O O O O
+O O O O O
+!END_INIT_STATE
