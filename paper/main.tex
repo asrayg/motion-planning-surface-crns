@@ -553,7 +553,6 @@ By the growth bound, $\Gamma(s, \tau) \cap \{t_1, t_2\} = \emptyset$ for all $\t
 Taking $I_1 = (G, s, t)$ yields the claim.
 \end{proof}
 
-
 \subsection{Adversary lower bound: \texorpdfstring{$\Omega(n)$}{Ω(n)}}
 \label{subsec:lower-n}
 
@@ -563,12 +562,12 @@ The distance bound of~\Cref{thm:lower-d} captures the cost of information propag
 \label{thm:lower-n}
 Let $\sCRN = (\Z^2, \Sigma, R)$ be any universal-rule-set surface CRN solving~\Cref{prob:motion}. For every sufficiently large $n$, there exists an instance $(G, s, t)$ with $|G| = n$ such that the expected completion time satisfies
 \[
-\mathbb{E}[T] \geq \frac{n - 1}{\lambda_{\max} \cdot \Delta},
+\mathbb{E}[T] \geq \frac{n - 2}{2 \cdot |R| \cdot \lambda_{\max}},
 \]
-where $\lambda_{\max} = \max_{r \in R} \lambda_r$ and $\Delta = 4$ is the grid degree. In particular, $\mathbb{E}[T] = \Omega(n)$ on a worst-case instance.
+where $\lambda_{\max} = \max_{r \in R} \lambda_r$ and $|R|$ is the total number of rules in the sCRN. In particular, for any fixed universal-rule-set sCRN (with $|R|, \lambda_{\max} = \Theta(1)$), $\mathbb{E}[T] = \Omega(n)$ on a worst-case instance.
 \end{theorem}
 
-The proof strategy is as follows. We construct a family of $n-1$ instances that share the same graph, start, and initial configuration everywhere \emph{except at a single site: the goal}. We then argue, via a shared-clock coupling, that any correct sCRN must fire its termination reaction at a specific site per instance. For the termination at the goal site in one instance to \emph{not} fire at the same site in another instance, the causal cone around the termination site must distinguish the two instances — which requires it to encompass all candidate goal sites. Causal cones grow at bounded rate, so this takes time $\Omega(n)$.
+The proof strategy is as follows. We construct a family of $n - 1$ instances that share the same graph, start, and initial configuration everywhere \emph{except at a single site: the goal}. We then argue, via a shared-clock coupling, that any correct sCRN must fire its termination reaction at a specific site per instance. For the termination at the goal site in one instance to \emph{not} fire at the same site in another instance, the causal cone around the termination site must distinguish the two instances — which requires it to encompass all candidate goal sites. Causal cones grow at bounded rate, so this takes time $\Omega(n)$.
 
 \paragraph{The adversarial instance family.}
 Let $n \geq 2$ be an integer. Define the grid $G_n = \{(0, 0), (1, 0), \ldots, (n-1, 0)\} \subseteq \Z^2$, the set of $n$ traversable sites forming a horizontal line. Let the start $s = (0, 0)$. For each $k \in \{1, 2, \ldots, n-1\}$, define instance $I_k = (G_n, s, (k, 0))$: the goal is at site $(k, 0)$.
@@ -597,43 +596,80 @@ Suppose the sCRN correctly solves instance $I_k$, terminating at time $T^{(k)}$ 
 
 Suppose for contradiction that some site $(k', 0)$ with $k' \neq k$ is not in $\Gamma((k, 0), T^{(k)})$. Then by the coupling, $X^{(k)}_{T^{(k)}}((k, 0)) = X^{(k')}_{T^{(k)}}((k, 0))$, and more strongly, the entire sequence of reactions fired at $(k, 0)$ (and its neighbors) up to time $T^{(k)}$ is identical in $X^{(k)}$ and $X^{(k')}$.
 
-In particular, the terminating reaction fires at $(k, 0)$ at time $T^{(k)}$ in $X^{(k')}$ as well — producing $\mathsf{REACHED}$ at $(k, 0)$ in instance $I_{k'}$. But the correct goal for $I_{k'}$ is $(k', 0) \neq (k, 0)$. For the sCRN to correctly solve $I_{k'}$, no $\mathsf{REACHED}$ should appear at $(k, 0)$ in $I_{k'}$.
+In particular, the terminating reaction fires at $(k, 0)$ at time $T^{(k)}$ in $X^{(k')}$ as well --- producing $\mathsf{REACHED}$ at $(k, 0)$ in instance $I_{k'}$. But the correct goal for $I_{k'}$ is $(k', 0) \neq (k, 0)$. For the sCRN to correctly solve $I_{k'}$, no $\mathsf{REACHED}$ should appear at $(k, 0)$ in $I_{k'}$.
 
 This contradicts correctness on $I_{k'}$.
 
 Therefore, at the termination time of $I_k$, $\Gamma((k, 0), T^{(k)}) \supseteq \{(1, 0), \ldots, (n-1, 0)\}$, which has size $n - 1$.
 
 \paragraph{Bounding the causal cone growth rate.}
-We now bound the rate at which causal cones grow in expectation. The following lemma is a standard first-passage-time argument for continuous-time branching-style processes; we sketch a proof here and defer a complete treatment to standard references~\cite[Ch.~VII]{feller1971}.
+We now bound the rate at which causal cones grow in expectation. The key observation is that while causal cones in general $2$D lattices can grow exponentially fast, on our adversarial instance (a 1D chain) they grow only linearly. We state both bounds for completeness.
 
-\begin{lemma}[Causal cone growth rate]
-\label{lem:cone-growth}
-For any site $v$ and any time $\tau \geq 0$, the expected size of the causal cone satisfies
+\begin{lemma}[Causal cone growth rate, general lattices]
+\label{lem:cone-growth-general}
+Fix a surface CRN $(L, \Sigma, R)$ with maximum rate $\lambda_{\max} = \max_{r \in R} \lambda_r$ and maximum lattice degree $\Delta$. For any site $v$ and any time $\tau \geq 0$,
 \[
-\mathbb{E}[|\Gamma(v, \tau)|] \leq 1 + \tau \cdot \lambda_{\max} \cdot \Delta.
+\mathbb{E}[|\Gamma(v, \tau)|] \leq \exp(\tau \cdot \Delta \cdot |R| \cdot \lambda_{\max}).
 \]
 \end{lemma}
 
-\begin{proof}[Proof sketch]
-The causal cone $\Gamma(v, \tau)$ is grown by reactions between sites currently in $\Gamma$ and adjacent sites not yet in $\Gamma$. Each such adjacency admits at most $|R|$ candidate rules; reactions actually fire at rate at most $\lambda_{\max}$ per adjacency (assuming rates are bounded). A site in $\Gamma$ has at most $\Delta$ adjacent sites, so the total rate at which the cone can grow is at most $|\partial \Gamma| \cdot \lambda_{\max} \leq |\Gamma| \cdot \Delta \cdot \lambda_{\max}$.
+\begin{proof}
+Let $C(\tau) = |\Gamma(v, \tau)|$. The process $C$ is non-decreasing, integer-valued, with $C(0) = 1$, and grows by jumps of $+1$ when a reaction fires between a cone site and a non-cone adjacent site.
 
-This gives a linear-growth bound: letting $C(\tau) = \mathbb{E}[|\Gamma(v, \tau)|]$, we have $\frac{d}{d\tau} C(\tau) \leq C(\tau) \cdot \Delta \cdot \lambda_{\max}$ in the worst case, but more usefully the expected number of ``new sites added'' per unit time is bounded by $\Delta \cdot \lambda_{\max}$ regardless of cone size. Integrating, $C(\tau) \leq 1 + \tau \cdot \Delta \cdot \lambda_{\max}$.
+At time $\tau$, the set of cone-boundary adjacencies --- ordered pairs $(u, w)$ with $u \in \Gamma(v, \tau)$, $w \notin \Gamma(v, \tau)$, and $u, w$ grid-adjacent --- has size at most $C(\tau) \cdot \Delta$, since each cone site has at most $\Delta$ grid-neighbors. Each such adjacency admits at most $|R|$ enabled rules, each firing at rate at most $\lambda_{\max}$. The total rate at which new sites enter the cone is therefore at most $C(\tau) \cdot \Delta \cdot |R| \cdot \lambda_{\max}$.
+
+Writing $\mu = \Delta \cdot |R| \cdot \lambda_{\max}$, the conditional jump rate of $C$ satisfies
+\[
+\mathbb{E}[C(\tau + d\tau) - C(\tau) \mid \mathcal{F}_\tau] \leq C(\tau) \cdot \mu \, d\tau,
+\]
+where $\mathcal{F}_\tau$ is the filtration up to time $\tau$. Taking expectations, $\frac{d}{d\tau} \mathbb{E}[C(\tau)] \leq \mu \cdot \mathbb{E}[C(\tau)]$, and Gronwall's inequality gives $\mathbb{E}[C(\tau)] \leq e^{\mu \tau}$.
 \end{proof}
 
-\begin{remark}
-The lemma as stated gives an \emph{additive} growth bound (new sites per unit time), not a multiplicative one. The multiplicative bound $C(\tau) \leq C(0) \cdot e^{\tau \Delta \lambda_{\max}}$ would also hold and would give exponential upper bounds; we use the additive form because it yields a sharper lower bound on termination time, exploiting that each boundary adjacency contributes at most $\lambda_{\max}$ to the cone-growth rate regardless of how many sites are already in the cone.
+\Cref{lem:cone-growth-general} gives exponential expected growth, which is too weak to support the $\Omega(n)$ lower bound on general 2D grids. However, on the specific adversarial instance we constructed --- a horizontal line of $n$ sites --- the cone's boundary is always of bounded size (at most two sites), regardless of how large the cone has grown. This yields a much stronger linear-growth bound, which is what the lower-bound argument actually requires.
+
+\begin{lemma}[Causal cone growth rate, linear chains]
+\label{lem:cone-growth-linear}
+Suppose the traversable subgraph $L$ is a path graph (a linear chain). Then for any site $v$ and any time $\tau \geq 0$,
+\[
+\mathbb{E}[|\Gamma(v, \tau)|] \leq 1 + 2 \cdot |R| \cdot \lambda_{\max} \cdot \tau.
+\]
+\end{lemma}
+
+\begin{proof}
+On a path graph, the causal cone $\Gamma(v, \tau)$ is always an interval $[v - a(\tau), v + b(\tau)]$ containing $v$, for some $a(\tau), b(\tau) \geq 0$. At any time, the cone boundary consists of at most two adjacency pairs --- one at each endpoint of the interval (or just one, if the cone has reached an end of the chain).
+
+Each boundary adjacency admits at most $|R|$ enabled rules firing at rate at most $\lambda_{\max}$. The total rate at which new sites enter the cone is therefore at most $2 \cdot |R| \cdot \lambda_{\max}$, \emph{independent of the current cone size}. This gives
+\[
+\frac{d}{d\tau} \mathbb{E}[|\Gamma(v, \tau)|] \leq 2 \cdot |R| \cdot \lambda_{\max},
+\]
+and integrating with $|\Gamma(v, 0)| = 1$ yields the claim.
+\end{proof}
+
+\begin{remark}[On the two bounds]
+\label{rem:two-bounds}
+\Cref{lem:cone-growth-general} is tight for 2D grids in the worst case: in a boundary-growth process on $\Z^2$ where every boundary adjacency fires, the cone does grow exponentially. \Cref{lem:cone-growth-linear} is specific to 1D chains, where the geometry of the lattice restricts boundary growth to at most two sites at all times. For the $\Omega(n)$ lower bound, the adversarial instance is 1D by construction, so the stronger lemma applies.
 \end{remark}
 
 \paragraph{Conclusion of~\Cref{thm:lower-n}.}
-Combining the two previous paragraphs: at time $T^{(k)}$, $|\Gamma((k, 0), T^{(k)})| \geq n - 1$. By~\Cref{lem:cone-growth}, $\mathbb{E}[|\Gamma((k, 0), \tau)|] \leq 1 + \tau \cdot \lambda_{\max} \cdot \Delta$. Setting the two bounds consistent: $n - 1 \leq 1 + \mathbb{E}[T^{(k)}] \cdot \lambda_{\max} \cdot \Delta$, giving
+The adversarial instance $G_n$ is a linear chain. By~\Cref{lem:cone-growth-linear}, $\mathbb{E}[|\Gamma((k, 0), \tau)|] \leq 1 + 2 \cdot |R| \cdot \lambda_{\max} \cdot \tau$. Combined with the lower bound $|\Gamma((k, 0), T^{(k)})| \geq n - 1$ from the coupling argument above,
 \[
-\mathbb{E}[T^{(k)}] \geq \frac{n - 2}{\lambda_{\max} \cdot \Delta}.
+n - 1 \leq 1 + 2 \cdot |R| \cdot \lambda_{\max} \cdot \mathbb{E}[T^{(k)}],
+\]
+giving
+\[
+\mathbb{E}[T^{(k)}] \geq \frac{n - 2}{2 \cdot |R| \cdot \lambda_{\max}}.
 \]
 This holds for every $k \in \{1, \ldots, n-1\}$, so every instance in the family has expected completion time $\Omega(n)$.
 \end{proof}
 
+\begin{remark}[On the $|R|$ factor]
+\label{rem:R-factor}
+The lower bound depends on $|R|$, the number of rules in the sCRN. For any universal-rule-set sCRN, $|R|$ is fixed independently of the instance, so the bound is $\Omega(n)$ with the hidden constant depending on the chosen construction. For our specific construction, $|R| = 2{,}430$.
+\end{remark}
+
 \begin{remark}[On the adversary]
-The instance family $\{I_k\}$ we constructed is essentially a worst-case input: a ``corridor'' where the goal could be anywhere along the line. The sCRN cannot distinguish one candidate goal from another without first exploring most of the corridor. Real-world motion-planning instances — ones where the goal is not adversarially concealed — may complete much faster in practice, as our experiments (\Cref{sec:experiments}) confirm.
+\label{rem:adversary}
+The instance family $\{I_k\}$ is essentially a worst-case input: a ``corridor'' where the goal could be anywhere along the line. The sCRN cannot distinguish one candidate goal from another without first exploring most of the corridor. Real-world motion-planning instances --- ones where the goal is not adversarially concealed --- may complete much faster in practice, as our experiments (\Cref{sec:experiments}) confirm.
 \end{remark}
 
 \begin{corollary}[Tight expected time]
@@ -644,8 +680,6 @@ Combining~\Cref{thm:upper},~\Cref{thm:lower-d}, and~\Cref{thm:lower-n}, the expe
 \]
 Moreover, the bound is tight within the class of universal-rule-set surface CRNs: no such construction can asymptotically improve upon it.
 \end{corollary}
-
-
 
 \section{Shortest-Path Variant}
 \label{sec:shortest}
@@ -711,12 +745,47 @@ By standard Poisson race arguments, the probability that gradient propagation al
 \Pr[\text{Exp}(\lambda_g)^{\leq k} > \text{Exp}(\lambda_g)^{\geq k+2}] = O(\lambda_a / \lambda_g) = O(\varepsilon).
 \]
 
-\paragraph{Expected path length.} Each of the $L$ agent moves incurs a suboptimal step with probability at most $O(\varepsilon)$. We assume these events are approximately independent, which holds up to lower-order corrections by a standard interlaced-Poisson argument (proof deferred to the full version). Let $S$ be the number of suboptimal moves. Each suboptimal move extends the path by at most $2$ (since the agent must backtrack to rejoin a shortest path from its current site). So $L \leq d + 2S$, and $\mathbb{E}[L] \leq d + 2 \cdot \mathbb{E}[S] \leq d + 2L \cdot O(\varepsilon)$.
+\paragraph{Expected path length.}
+We bound the path length by analyzing the depth of the agent's starting position in the stochastic gradient tree, rather than arguing about individual agent moves.
 
-Rearranging: $\mathbb{E}[L] \cdot (1 - O(\varepsilon)) \leq d$, so $\mathbb{E}[L] \leq d \cdot (1 + O(\varepsilon)) = (1 + O(\varepsilon)) \cdot d$.
+\emph{The stochastic gradient tree.} After the agent becomes tagged, it follows parent-pointers upstream to $t$. Define the \emph{stochastic tree} as the directed graph on $G_t$ where each cell $v \neq t$ has a single outgoing edge to its parent-pointer target, and $t$ is the root. By~\Cref{lem:tag-validity} and the construction of parent-pointers in Families 1 and 2, this is a spanning tree of $G_t$ rooted at $t$. For each cell $v$, let $\mathrm{TreeDepth}(v)$ denote the length of the path from $v$ to $t$ in this tree.
+
+\emph{Path length in terms of tree depth.} The agent enters the tree at some cell $v_{\text{enter}}$ which is either $s$ itself (if $s$ received its tag from a gradient neighbor via Family 3a) or a neighbor of $s$ that the agent moved to. In either case, $\pi(v_{\text{enter}}) \leq \pi(s) + 1 = d + 1$, where $\pi$ denotes BFS-distance to $t$. The agent's total path length is bounded by
+\[
+L \leq 1 + \mathrm{TreeDepth}(v_{\text{enter}}).
+\]
+
+\emph{Bounding expected tree depth.} For any cell $v$, let $X_v = \mathrm{TreeDepth}(v) - \pi(v) \geq 0$ be the excess tree depth. We claim $\mathbb{E}[X_v] \leq C \varepsilon \cdot \pi(v)$ for a constant $C$ depending only on lattice geometry.
+
+Consider the path from $v$ to $t$ in the stochastic tree: $v = u_0, u_1, \ldots, u_k = t$ where $k = \mathrm{TreeDepth}(v)$ and each $u_{i+1}$ is the parent-pointer of $u_i$. For each step $i$, either $\pi(u_{i+1}) = \pi(u_i) - 1$ (a ``good'' step that reduces BFS-depth by exactly 1) or $\pi(u_{i+1}) \geq \pi(u_i)$ (a ``bad'' step that does not decrease depth). Since $\pi(t) = 0$ and $\pi(v) = \pi(u_0)$, the number of good steps is exactly $\pi(v)$, and the number of bad steps is exactly $X_v = k - \pi(v)$.
+
+Define the indicator $B_i = \mathbb{1}[\text{step } i \text{ is bad}]$. Then $X_v = \sum_i B_i$.
+
+\emph{Per-step bound.} We show $\Pr[B_i = 1 \mid \mathcal{F}_{i}] \leq C\varepsilon$, where $\mathcal{F}_i$ is the filtration containing all clock firings that occurred before $u_i$ first had an eligible gradient neighbor. Conditional on $\mathcal{F}_i$, the parent-pointer of $u_i$ is determined by the next clock firing among the edges incident to $u_i$ with appropriate rule. This is a race among at most $\Delta$ edges, each equipped with an independent Exp($\lambda_g$) clock; by the memoryless property, the identity of the winning edge is independent of $\mathcal{F}_i$ beyond the current labeling status of $u_i$'s neighbors.
+
+An edge $(u_i, w)$ ``wins'' the race if and only if $w$ was already a gradient cell at the time of firing and its Family 2 clock fires first. The event $\{B_i = 1\}$ requires the winning edge to point to a non-shortening neighbor --- one with $\pi(w) \geq \pi(u_i)$. We bound this probability.
+
+For $u_i$'s shortening neighbor $w^*$ (with $\pi(w^*) = \pi(u_i) - 1$): by induction along the gradient propagation, $w^*$ becomes a gradient cell before $u_i$ does, since $w^*$'s labeling is a prerequisite for $u_i$'s labeling along the shortest-path route. Hence by the time $u_i$ becomes labelable (has any $\mathsf{G}$ neighbor), $w^*$ has already been $\mathsf{G}$ for some time.
+
+The clock on edge $(w^*, u_i)$ thus ``fires'' at rate $\lambda_g$ starting from when $w^*$ became $\mathsf{G}$. For any non-shortening neighbor $w'$ (with $\pi(w') \geq \pi(u_i)$), the clock on $(w', u_i)$ fires at rate $\lambda_g$ starting from when $w'$ became $\mathsf{G}$, which is at or after the time $u_i$ became labelable.
+
+A clean upper bound: because $w'$'s labeling requires at least one more Exp($\lambda_g$) step than $w^*$'s (the non-shortening path has length $\geq \pi(w^*) + 1 = \pi(u_i)$ versus $w^*$'s length $\pi(u_i) - 1$), the arrival-time gap for $w'$ stochastically dominates Exp($\lambda_g$). Hence
+\[
+\Pr[w' \text{ wins the race to label } u_i] \leq \frac{\lambda_a}{\lambda_a + \lambda_g} = \frac{\varepsilon}{1 + \varepsilon} \leq \varepsilon.
+\]
+Stochastic domination of first-passage times on BFS-depth-ordered paths follows from a standard coupling; see~\cite[Ch.~VII]{feller1971}.
+
+Summing over the at most $\Delta - 1$ non-shortening neighbors, $\Pr[B_i = 1 \mid \mathcal{F}_i] \leq (\Delta - 1) \varepsilon \leq 3\varepsilon$ for the 2D grid ($\Delta = 4$).
+
+\emph{Summing via iterated expectation.} By iterated expectation,
+\[
+\mathbb{E}[X_v] = \mathbb{E}\left[\sum_i B_i\right] = \sum_i \mathbb{E}[\mathbb{E}[B_i \mid \mathcal{F}_i]] \leq 3\varepsilon \cdot \mathbb{E}[k] = 3\varepsilon \cdot \mathbb{E}[\mathrm{TreeDepth}(v)] = 3\varepsilon \cdot (\pi(v) + \mathbb{E}[X_v]).
+\]
+Rearranging: $\mathbb{E}[X_v] (1 - 3\varepsilon) \leq 3\varepsilon \cdot \pi(v)$, hence $\mathbb{E}[X_v] \leq \frac{3\varepsilon}{1 - 3\varepsilon} \pi(v) = O(\varepsilon) \cdot \pi(v)$ for $\varepsilon < 1/3$.
+
+\emph{Conclusion.} $\mathbb{E}[L] \leq 1 + \mathbb{E}[\mathrm{TreeDepth}(v_{\text{enter}})] = 1 + \pi(v_{\text{enter}}) + \mathbb{E}[X_{v_{\text{enter}}}] \leq 1 + (d + 1)(1 + O(\varepsilon)) = (1 + O(\varepsilon)) d$ for $d \geq 1$.
 
 \paragraph{Expected number of reactions.} We measure completion time in reactions. The gradient phase fires Family 1 and Family 2 reactions until every traversable site is labeled, requiring $\Theta(n)$ reactions. Under the rate structure $\lambda_g = 1/\varepsilon$, $\lambda_a = 1$, between consecutive agent reactions the expected number of gradient reactions that fire is $\Theta(\lambda_g / \lambda_a) = \Theta(1/\varepsilon)$, so the total gradient-reaction count over the duration of the agent phase is $O(n/\varepsilon)$. Summing with the $O(d)$ agent-move reactions gives $\mathbb{E}[T] = O(n/\varepsilon + d)$ reactions.
-
 
 \paragraph{Conclusion.} $\mathbb{E}[L] \leq (1 + O(\varepsilon)) d$ and $\mathbb{E}[T] = O(n/\varepsilon + d)$ in reactions.
 \end{proof}
