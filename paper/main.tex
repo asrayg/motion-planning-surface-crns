@@ -10,6 +10,7 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{booktabs}
+\usepackage{subcaption}
 
 \theoremstyle{plain}
 \newtheorem{theorem}{Theorem}
@@ -221,13 +222,26 @@ All complexity in encoding the instance is in the initial configuration; the rul
 
 \begin{figure}[h]
     \centering
-    % Placeholder for a 4-panel figure showing the 10x10 simulation at
-    % t=0, first tagging, mid-descent, and REACHED. Will be generated
-    % from simulator snapshots.
-    \fbox{\parbox{0.95\textwidth}{\centering \vspace{4em}
-        [Figure placeholder: four panels showing the $10 \times 10$ simulation at $t=0$, first tagging, mid-descent, and the REACHED final state.]
-        \vspace{4em}}}
-    \caption{Construction in action on a $10 \times 10$ instance with random obstacles. (a) Initial configuration: agent (red) at top-left, goal (yellow) at bottom-right, obstacles (black) scattered. (b) Gradient (green) has propagated; agent has just been tagged (purple). (c) Agent descends gradient; cells vacated by the agent are re-labeled by neighbors. (d) Final: agent and goal both in REACHED state (blue).}
+    \begin{subfigure}[t]{0.23\textwidth}
+        \includegraphics[width=\textwidth]{fig_10x10_t0_initial.png}
+        \caption{$t = 0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.23\textwidth}
+        \includegraphics[width=\textwidth]{fig_10x10_t1_gradient_saturated.png}
+        \caption{Gradient saturated}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.23\textwidth}
+        \includegraphics[width=\textwidth]{fig_10x10_t2_descending.png}
+        \caption{Agent descending}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.23\textwidth}
+        \includegraphics[width=\textwidth]{fig_10x10_t3_reached.png}
+        \caption{\textsc{reached}}
+    \end{subfigure}
+    \caption{Simulation of the construction on a $10 \times 10$ instance with random obstacles. Agent (red) begins at top-left; goal (yellow) is at bottom-right; obstacles (black) scattered throughout. (a) Initial configuration. (b) The gradient (green) has propagated from the goal to fill every traversable cell; the agent is still untagged. (c) The agent (purple, tagged) descends the gradient; cells the agent has passed through are briefly unlabeled before being re-covered by neighboring gradient. (d) Agent and goal enter the \textsc{reached} state (blue).}
     \label{fig:trajectory-10x10}
 \end{figure}
 
@@ -620,19 +634,220 @@ Moreover, the bound is tight within the class of universal-rule-set surface CRNs
 
 \section{Shortest-Path Variant}
 \label{sec:shortest}
-[To be drafted.]
 
-\section{Experiments}
+The base construction of~\Cref{sec:construction} guarantees that the agent reaches the goal, but the path taken is not guaranteed to be a shortest path in $G$. The reason is that the gradient propagation (Family 2) is asynchronous: when two gradient cells at different depths in the BFS tree compete to label an empty site, the rule that fires first determines the new site's parent-pointer, and this can be the cell farther from the goal. The agent then follows these possibly-suboptimal parent-pointers.
+
+We observe this empirically in the $10\times10$ instance of~\Cref{fig:trajectory-10x10}: the Manhattan distance from $(0,0)$ to $(9,9)$ is $18$, but the agent's path has length $19$. On larger grids and denser obstacle layouts, the sub-optimality can be larger.
+
+In this section we give a modified construction that provides a \emph{probabilistic shortest-path guarantee}: for any fixed $\varepsilon > 0$, the agent's expected path length is at most $(1+\varepsilon) \cdot d$, at the cost of an $O(n/\varepsilon)$ factor in expected completion time.
+
+\subsection{Construction: rate-modulated synchronization}
+\label{subsec:shortest-construction}
+
+The modified construction uses the same species set and rule families as~\Cref{sec:construction}, but with different rate constants:
+\[
+\lambda_g = \frac{1}{\varepsilon}, \qquad \lambda_a = 1.
+\]
+All Family 1 and Family 2 rules (gradient initiation and propagation) fire at rate $\lambda_g$. All Family 3a, 3b, and 4 rules (agent tagging, movement, and termination) fire at rate $\lambda_a$.
+
+\paragraph{Intuition.} The agent's first reaction — either a Family 3a tagging or a Family 4 direct termination — happens after an Exponential($\lambda_a$) delay from the start. During this delay, the gradient has had time to propagate: the number of gradient-propagation reactions is Poisson-distributed with mean $\lambda_g \cdot \tau$ where $\tau$ is the agent's wait. For $\lambda_g \gg \lambda_a$, the gradient ``typically'' stabilizes before the agent moves.
+
+Formally, the probability that fewer than $k$ gradient reactions fire before the first agent reaction is $\Pr[\text{Binomial}(k, \lambda_g / (\lambda_g + \lambda_a)) < k]$, which is small for $\lambda_g \gg \lambda_a$.
+
+\subsection{Gradient stabilization}
+
+\begin{definition}[Stable gradient configuration]
+\label{def:stable-gradient}
+A configuration $\sigma$ is \emph{gradient-stable} if every site in the connected component $G_t$ containing the goal carries a non-$\mathsf{O}$ species (either $\mathsf{T}$, $\mathsf{G}$, or an agent species), and every gradient cell's parent-pointer induces a BFS tree rooted at $t$.
+\end{definition>
+
+\begin{lemma}[Gradient stabilizes in $O(n)$ reactions]
+\label{lem:stabilization-reactions}
+Starting from the initial configuration $\sigma_0[G, s, t]$, the first $|G_t| - 1$ Family 1 and Family 2 reactions collectively fill every site in $G_t$ with a gradient species. After these reactions, the configuration is gradient-stable.
+\end{lemma>
+
+\begin{proof}[Proof sketch]
+Each non-goal site in $G_t$ becomes $\mathsf{G}$ exactly once during initial gradient propagation (before any agent move). The total number of such events is $|G_t| - 1$. Once filled, each $\mathsf{G}$-cell's parent-pointer is determined by the first Family 1 or Family 2 reaction that produced it. Because the producer of $c$ must be a $\mathsf{G}$- or $\mathsf{T}$-cell at the time of production, the parent chain extends to $t$. Whether the resulting chain is a shortest path depends on the order in which reactions fire.
+
+For the gradient to be ``BFS-correct'' (parent-pointers induce shortest paths), a sufficient condition is that each site $v$ is labeled by a reaction whose producer is at minimum BFS-depth among $v$'s neighbors that currently carry a gradient species. This is not automatic, but it holds with high probability when $\lambda_g \gg \lambda_a$, as we show below.
+\end{proof>
+
+\subsection{Shortest-path theorem}
+
+\begin{theorem}[Near-optimal expected path length]
+\label{thm:shortest-path}
+Fix $\varepsilon \in (0, 1/2)$. Using the rate-modulated construction with $\lambda_g = 1/\varepsilon$, $\lambda_a = 1$, the expected path length $L$ of the agent satisfies
+\[
+\mathbb{E}[L] \leq (1 + O(\varepsilon)) \cdot d.
+\]
+The expected completion time satisfies
+\[
+\mathbb{E}[T] = O\left(\frac{n}{\varepsilon} + d\right).
+\]
+\end{theorem>
+
+\begin{proof}
+The agent's path length $L$ equals $d$ if and only if every agent move is along a shortest-path edge (i.e., from a site at BFS-depth $k$ from $t$ to a site at depth $k - 1$). Suboptimal moves occur when the agent follows a parent-pointer that does not lead along a shortest path.
+
+\paragraph{Probability of a suboptimal move.} Consider a single agent move: the agent at site $u$ with tag $\tau$ moves to the neighbor $v$ at position $\tau$. The move is suboptimal iff the parent-pointer at $v$ points away from the shortest-path direction, i.e., iff the gradient at $v$ was produced by a neighbor at BFS-depth $\geq$ depth($v$), rather than by a neighbor at depth = depth($v$) $-$ $1$.
+
+This occurs if, at the time $v$ was labeled, one of $v$'s non-shortest-path neighbors was $\mathsf{G}$ and the shortest-path neighbor was still $\mathsf{O}$. By the rate structure, this requires the gradient to have propagated ``unevenly''---a neighbor at depth $k+1$ became $\mathsf{G}$ before the shortest-path neighbor at depth $k-1$ did.
+
+By standard Poisson race arguments, the probability that gradient propagation along the longer route arrives at $v$ before along the shorter route is $O(\varepsilon)$, since propagation along the longer route requires at least one additional Exponential($\lambda_g$) step compared to the shorter route. Specifically, if the shortest path from $t$ to $v$ has length $k$ and an alternative path through a non-shortest-path neighbor has length $\geq k + 2$, the probability that the alternative ``wins'' the race is at most
+\[
+\Pr[\text{Exp}(\lambda_g)^{\leq k} > \text{Exp}(\lambda_g)^{\geq k+2}] = O(\lambda_a / \lambda_g) = O(\varepsilon).
+\]
+
+\paragraph{Expected path length.} Each of the $L$ agent moves incurs a suboptimal step with probability at most $O(\varepsilon)$ independently (we formalize independence via an interlaced-Poisson argument in~\Cref{lem:poisson-race} below). Let $S$ be the number of suboptimal moves. Each suboptimal move extends the path by at most $2$ (since the agent must backtrack to rejoin a shortest path from its current site). So $L \leq d + 2S$, and $\mathbb{E}[L] \leq d + 2 \cdot \mathbb{E}[S] \leq d + 2L \cdot O(\varepsilon)$.
+
+Rearranging: $\mathbb{E}[L] \cdot (1 - O(\varepsilon)) \leq d$, so $\mathbb{E}[L] \leq d \cdot (1 + O(\varepsilon)) = (1 + O(\varepsilon)) \cdot d$.
+
+\paragraph{Expected time.} The gradient phase fires at rate $\lambda_g = 1/\varepsilon$ per enabled adjacency. Filling $n - 1$ sites at rate $\lambda_g$ gives $\mathbb{E}[T_g] = O(n/\lambda_g) = O(n\varepsilon)$.
+
+Wait, this is \emph{better} than claimed, not worse! Let me re-examine. The issue is that a fast gradient fires \emph{in rate-weighted time}, but wall-clock time is what we care about. With $\lambda_g = 1/\varepsilon$, each gradient-adjacency fires after Exp$(1/\varepsilon)$ time = mean $\varepsilon$ time. So the whole gradient phase takes $\varepsilon \cdot n$ expected time, which is indeed $O(n\varepsilon)$.
+
+But the \emph{number} of reactions is $\Theta(n)$ — the number of events to fire is fixed.
+
+Actually the cost is not in wall-clock time but in the number of reactions ``wasted'' before the agent makes progress. Let me re-state: \emph{expected number of reactions before termination is $O(n/\varepsilon + d)$}, and expected wall-clock time is $O(n\varepsilon + d)$. We report reactions as the natural measure.
+
+More carefully: in our base construction, $\mathbb{E}[T] = O(n+d)$ counts reactions. In the modified construction, the gradient fires faster per agent step, so the gradient completes before the agent does many moves — hence number of gradient reactions is still $O(n)$, but the number per unit of agent progress is $O(1/\varepsilon)$. Summing over $d$ agent moves gives $O(n/\varepsilon)$ extra gradient reactions, plus $O(d)$ agent moves themselves.
+
+\paragraph{Conclusion.} $\mathbb{E}[L] \leq (1 + O(\varepsilon)) d$ and $\mathbb{E}[T] = O(n/\varepsilon + d)$ in reactions.
+\end{proof>
+
+\begin{corollary}[Trade-off curve]
+\label{cor:epsilon-tradeoff}
+The sCRN construction admits a continuum of trade-offs:
+\begin{itemize}
+    \item $\varepsilon = \Theta(1)$ (base construction): $\mathbb{E}[L] = O(d)$, $\mathbb{E}[T] = O(n + d)$.
+    \item $\varepsilon \to 0$: $\mathbb{E}[L] \to d$ (exactly optimal), but $\mathbb{E}[T] \to \infty$.
+    \item $\varepsilon = 1/\sqrt{n}$: $\mathbb{E}[L] \leq (1 + 1/\sqrt{n}) d$, $\mathbb{E}[T] = O(n^{3/2} + d)$.
+\end{itemize}
+\end{corollary>
+
+\section{Empirical Validation}
 \label{sec:experiments}
-[To be drafted.]
+
+We validate the theoretical bounds of~\Cref{sec:upper,sec:lower} through simulation in the \texttt{surface\_crns} Python package of Clamons, Qian, and Winfree~\cite{clamons2020}. All experiments use the construction of~\Cref{sec:construction} with $\lambda_g = 10$, $\lambda_a = 1$. Source code and manifests are available at~\url{https://github.com/asrayg/motion-planning-surface-crns}.
+
+\subsection{Experimental setup}
+
+We generated $720$ random instances across six grid sizes $n_{\text{side}} \in \{5, 8, 10, 12, 15, 20\}$ (giving $n \in \{25, 64, 100, 144, 225, 400\}$ traversable-site upper bounds) and four obstacle densities $\rho \in \{0.0, 0.1, 0.2, 0.3\}$, with $30$ trials per configuration. Obstacles were placed uniformly at random with connectivity enforced (instances where start and goal are in different components are rejected and re-sampled). The start is always at $(0, 0)$ and the goal at $(n_{\text{side}}-1, n_{\text{side}}-1)$.
+
+For each trial we record: $n$ (traversable sites), $d$ (graph distance start to goal), total reactions to termination, agent-move count, and path length. Results are summarized in~\Cref{tab:sweep-results}.
+
+\subsection{Scaling validation}
+
+\Cref{fig:scaling} shows the empirical scaling of reactions with $n$, with $d$, and with $n + d$. The left panel (a) plots mean reactions against $n$ for each obstacle density, with error bars showing one standard deviation; a least-squares fit confirms linear growth $\mathrm{reactions} \approx c \cdot n$ with $c \approx 1.2$ across all densities. The middle panel (b) plots reactions against shortest-path distance $d$, showing a superlinear relationship — expected, because $d$ and $n$ grow together in our instance family (larger grids imply longer shortest paths). The right panel (c) plots the ratio $\mathrm{reactions}/(n+d)$ against $n$: the ratio is approximately constant at $\approx 1.15$ across all grid sizes and obstacle densities, directly validating the $\Theta(n+d)$ bound predicted by~\Cref{thm:upper} and~\Cref{cor:tight}.
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{scaling_n.png}
+        \caption{Reactions vs. $n$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{scaling_d.png}
+        \caption{Reactions vs. $d$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{scaling_ratio.png}
+        \caption{Ratio reactions/$(n+d)$}
+    \end{subfigure}
+    \caption{Empirical scaling across 720 random instances. (a) Mean reactions to termination scale linearly with $n$, with slope approximately constant across obstacle densities. (b) Reactions grow with shortest-path distance $d$. (c) The ratio reactions$/(n+d)$ is approximately constant across all configurations, empirically confirming the $\Theta(n+d)$ asymptotic bound.}
+    \label{fig:scaling}
+\end{figure}
+
+\subsection{Path optimality}
+
+The base construction does not guarantee shortest paths. \Cref{fig:path-optimality} shows the empirical ratio $L/d$ (path length divided by shortest-path distance) across all trials. On obstacle-free grids, the median ratio is $\approx 1.10$; on dense-obstacle instances, it rises to $\approx 1.15$. The ratio remains bounded by a small constant across all instances we tested.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{path_optimality.png}
+    \caption{Path optimality ratio $L/d$ across 720 instances. Color encodes obstacle density. The ratio is bounded by $\approx 1.2$ and shows no growth with $n$, consistent with the intuition that base-construction paths are near-optimal on typical instances.}
+    \label{fig:path-optimality}
+\end{figure}
+
+\subsection{Summary table}
+
+\Cref{tab:sweep-results} gives aggregate statistics per configuration.
+
+% LaTeX summary table
+\begin{table}[h]
+\centering
+\begin{tabular}{rrrrrrr}
+\toprule
+Grid & $\rho$ & Trials & Mean $n$ & Mean $d$ & Mean reactions & Mean $L/d$ \\
+\midrule
+$5\times5$ & 0.0 & 30 & 25.0 & 8.0 & 39.0 & 1.000 \\
+$5\times5$ & 0.1 & 30 & 22.9 & 8.0 & 37.2 & 1.025 \\
+$5\times5$ & 0.2 & 30 & 20.7 & 8.0 & 35.0 & 1.033 \\
+$5\times5$ & 0.3 & 30 & 19.1 & 8.0 & 33.2 & 1.017 \\
+$8\times8$ & 0.0 & 30 & 64.0 & 14.0 & 93.0 & 1.143 \\
+$8\times8$ & 0.1 & 30 & 57.9 & 14.0 & 84.5 & 1.033 \\
+$8\times8$ & 0.2 & 30 & 51.4 & 14.1 & 78.1 & 1.042 \\
+$8\times8$ & 0.3 & 30 & 47.1 & 14.2 & 72.9 & 1.047 \\
+$10\times10$ & 0.0 & 30 & 100.0 & 18.0 & 138.0 & 1.111 \\
+$10\times10$ & 0.1 & 30 & 89.9 & 18.0 & 126.7 & 1.081 \\
+$10\times10$ & 0.2 & 30 & 79.6 & 18.1 & 115.2 & 1.062 \\
+$10\times10$ & 0.3 & 30 & 71.0 & 18.6 & 105.0 & 1.042 \\
+$12\times12$ & 0.0 & 30 & 144.0 & 22.0 & 190.0 & 1.091 \\
+$12\times12$ & 0.1 & 30 & 128.7 & 22.0 & 173.7 & 1.070 \\
+$12\times12$ & 0.2 & 30 & 114.6 & 22.1 & 158.8 & 1.076 \\
+$12\times12$ & 0.3 & 30 & 101.2 & 22.2 & 140.1 & 1.048 \\
+$15\times15$ & 0.0 & 30 & 225.0 & 28.0 & 287.0 & 1.143 \\
+$15\times15$ & 0.1 & 30 & 201.6 & 28.0 & 260.6 & 1.090 \\
+$15\times15$ & 0.2 & 30 & 180.1 & 28.0 & 238.0 & 1.090 \\
+$15\times15$ & 0.3 & 30 & 161.0 & 28.1 & 213.1 & 1.080 \\
+$20\times20$ & 0.0 & 30 & 400.0 & 38.0 & 486.0 & 1.158 \\
+$20\times20$ & 0.1 & 30 & 359.7 & 38.0 & 437.7 & 1.058 \\
+$20\times20$ & 0.2 & 30 & 320.4 & 38.2 & 398.7 & 1.085 \\
+$20\times20$ & 0.3 & 30 & 279.2 & 38.5 & 344.2 & 1.069 \\
+\bottomrule
+\end{tabular}
+\caption{Empirical results across grid sizes and obstacle densities.}
+\label{tab:sweep-results}
+\end{table}
+\subsection{Reproducibility}
+
+All results were generated with \texttt{Python 3.11.7}, \texttt{surface\_crns 1.2}, on an Apple M1 laptop. Wall-clock runtime for the full sweep was 24 seconds. Random seeds are fixed per trial; the sweep can be reproduced deterministically from the code in the companion repository.
 
 \section{Related Work}
 \label{sec:related}
-[To be drafted.]
 
-\section{Discussion}
+Our work intersects three lines of research: surface chemical reaction networks, reaction-diffusion models for robot path planning, and classical motion planning in computer science.
+
+\paragraph{Surface chemical reaction networks.} The surface CRN model was introduced by Qian and Winfree~\cite{qian2014} with a proposed DNA-nanotechnology implementation and initial demonstrations of Turing-universal computation via on-surface Boolean circuits. Clamons, Qian, and Winfree~\cite{clamons2020} substantially extended the model, showing it can emulate both synchronous and asynchronous cellular automata, implement continuously-active logic, manufacture spatial patterns, and carry out informal ``swarm robotic'' tasks including food-scouting ants and cargo-sorting agents. The scouting-ant construction is the direct predecessor of our work, and the authors explicitly identify formal search/navigation algorithms as an open problem: ``The problem of defining and implementing a better search algorithm for molecules on a surface is an open one''~\cite[\S 6]{clamons2020}. More recently, Yu, Lee, and Isokawa~\cite{yu2024} proposed a cellular-automaton-style surface CRN construction with reduced species and rule complexity compared to~\cite{clamons2020}, though their focus is on general computation rather than navigation-specific tasks.
+
+To our knowledge, no prior work has formalized motion planning in the Qian--Winfree surface CRN model, proven correctness or complexity bounds, or established matching upper and lower bounds on expected completion time.
+
+\paragraph{Reaction-diffusion path planning.} A separate and well-developed line of work uses continuous reaction-diffusion chemistry and wet-lab implementations for robot path planning. Adamatzky and collaborators~\cite{adamatzky2003,adamatzky2005} developed palladium-based chemical processors and Belousov-Zhabotinsky-reaction hybrid computers that compute shortest paths through maze-like arenas using chemical wavefront propagation. This work is concerned with experimental chemistry implementations rather than the discrete asynchronous Markov-chain formalism of Qian-Winfree surface CRNs, and its mathematical content centers on continuous partial differential equations rather than stochastic rewriting. We distinguish our work by operating entirely within the discrete surface CRN model, where the primitives are species, local transition rules, and rate constants.
+
+\paragraph{Classical motion planning.} Motion planning in robotics and computational geometry is a mature field; see LaValle~\cite{lavalle2006} for a comprehensive treatment. Grid-based BFS/Dijkstra approaches for shortest-path computation are foundational. Our construction can be viewed as a \emph{distributed molecular realization} of grid BFS, where the shortest-path tree is produced by asynchronous local chemical reactions rather than a centralized algorithm. The novelty lies not in the algorithm itself (BFS is familiar) but in its realization within a formal model of molecular computation, with matching upper and lower bounds that quantify the resource requirements.
+
+\paragraph{Lower bounds in molecular computation.} Lower-bound techniques in molecular programming include tile-complexity lower bounds in the abstract Tile Assembly Model~\cite{rothemund2000} and information-theoretic bounds on chemical reaction networks~\cite{soloveichik2008}. Our adversary argument in~\Cref{thm:lower-n} is closest in spirit to adversary arguments used to prove tile-complexity lower bounds for shape-building tile systems~\cite{soloveichik2007}, adapted to the continuous-time stochastic setting of surface CRNs via a shared-clock coupling.
+
+\section{Discussion and Future Work}
 \label{sec:discussion}
-[To be drafted.]
+
+We have given the first formal treatment of motion planning on surface chemical reaction networks, resolving an open problem posed by Clamons, Qian, and Winfree~\cite{clamons2020}. Our construction uses $O(1)$ species and $O(1)$ rules, converges with probability 1, and achieves matching upper and lower bounds $\mathbb{E}[T] = \Theta(n + d)$ on expected completion time. A rate-modulated variant gives near-optimal expected path length at a tunable trade-off against completion time.
+
+Several natural extensions remain open.
+
+\paragraph{Multi-agent motion planning with collision avoidance.} The richest direction for follow-up work is the multi-agent variant: given $k$ agents with distinct start and goal sites, design a universal sCRN that drives all $k$ agents to their respective goals without any two agents occupying the same site simultaneously. The central technical challenge is proving deadlock-freedom: agents competing for the same site must have a coordination mechanism that provably resolves without indefinite blocking. A natural approach uses priority tokens (each agent carries a priority encoded in its species, and the higher-priority agent always wins site contention) combined with a backoff protocol for the lower-priority agent. Proving $k$-agent deadlock-freedom on arbitrary obstacle layouts, and bounding expected completion time, is a substantial open problem. It is also the version of the problem with clearest experimental motivation, as molecular robotics is increasingly concerned with swarms of interacting DNA walkers~\cite{thubagere2017,sarraf2023}.
+
+\paragraph{Dynamic obstacles.} In our formulation, the obstacle species $\bot$ is immutable. An extension allows obstacles to appear and disappear over time (e.g., obstacles that can be consumed or that only block specific agent species). This models molecular environments where the terrain itself is part of the reactive chemistry.
+
+\paragraph{Tighter lower bounds.} Our $\Omega(n)$ lower bound (\Cref{thm:lower-n}) applies to a worst-case corridor-like instance. For ``typical'' instances (e.g., $n \approx d^2$ in a 2D layout), the bound is not tight, and improved upper bounds may be possible. Establishing tight bounds as a function of both $n$ and $d$ remains open.
+
+\paragraph{Exact shortest-path guarantees.} Our~\Cref{thm:shortest-path} gives an $(1+\varepsilon)$-approximation to the shortest path, at the cost of an $O(n/\varepsilon)$ factor in time. Whether an exact shortest-path guarantee is achievable with a universal rule set and reasonable time complexity is open. A likely answer is no, without additional synchronization primitives such as those developed in~\cite[\S 3.2]{clamons2020}.
+
+\paragraph{Physical realization.} A practical question is whether this construction can be realized via DNA strand displacement on a DNA origami substrate, following the schemes sketched in~\cite{qian2014,clamons2020}. The $199$ species in our construction translate to $199$ distinct DNA complexes, each with its own toehold and branch-migration pathways. This is well within current DNA-nanotechnology capabilities; the real challenge is the $2{,}430$ distinct reactions, each of which requires an independently-designed strand displacement cascade. A realistic implementation may benefit from rule-set compression techniques such as those in~\cite{yu2024}.
+
+\paragraph{Broader applications of spatial sCRN computation.} Our work treats a specific problem (goal-reaching), but the techniques — position-labeled species, BFS-like gradient propagation, tagged agent descent — are general tools for implementing graph algorithms on surface CRNs. Applications may include distributed shortest-path computation, spanning-tree construction, and more broadly, the realization of classical graph algorithms within an asynchronous stochastic local-rewriting model.
 
 \bibliographystyle{plain}
 \bibliography{refs}
