@@ -1,0 +1,115 @@
+# Motion Planning on Surface Chemical Reaction Networks
+
+This repository contains the construction, simulator experiments, and empirical validation for the paper:
+
+**Formalizing Motion Planning on Surface Chemical Reaction Networks: Construction, Complexity, and Shortest-Path Guarantees**
+Asray Gopa, Iowa State University, 2026.
+
+The paper gives the first rigorous treatment of motion planning in the surface CRN model of Qian & Winfree (2014) and Clamons, Qian, & Winfree (2020), resolving an open problem posed in the latter. We prove matching upper and lower bounds $\mathbb{E}[T] = \Theta(n+d)$ on expected completion time for goal-reaching with obstacles, and give a rate-modulated variant with near-optimal expected path length.
+
+## Overview
+
+A *surface chemical reaction network* is a grid whose sites carry chemical species, with reactions firing locally between adjacent sites at specified rates. The *motion-planning problem* asks: can a fixed rule set drive an "agent" molecule to a "goal" molecule across a grid with arbitrary obstacle layouts, using only local chemistry?
+
+We answer yes, with:
+
+- A universal rule set: 199 species, 2,430 rules, independent of the instance.
+- Correctness with probability 1 on every input, proven via a local invariant on the agent's tag.
+- Expected completion time $\Theta(n+d)$, where $n$ is the number of traversable sites and $d$ is the shortest-path distance.
+- A shortest-path variant with expected path length $(1+\varepsilon)\cdot d$ at the cost of $O(n/\varepsilon + d)$ expected reactions.
+
+## Repository structure
+
+motion-planning-surface-crns/
+├── manifests/          # Surface CRN manifest files (generated)
+├── experiments/        # Python scripts for experiments
+│   ├── gen_manifest.py         # Manifest generator for any grid size/obstacle layout
+│   ├── run_instrumented.py     # Single-instance simulation with full reaction logging
+│   ├── stress_test.py          # 1000-trial correctness validation
+│   ├── generate_figures.py     # Snapshot generation for paper figures
+│   ├── sweep.py                # Full experimental sweep (720 trials)
+│   └── plot_sweep.py           # Scaling plots and LaTeX table from sweep data
+├── data/               # CSV outputs from sweep.py
+├── figures/            # PNG outputs from generate_figures.py and plot_sweep.py
+└── README.md
+
+## Installation
+
+Requires Python 3.11+. Clone and set up a virtual environment:
+
+```bash
+git clone https://github.com/asrayg/motion-planning-surface-crns.git
+cd motion-planning-surface-crns
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+The `surface_crns` package requires a small patch for Python 3.11 compatibility:
+
+```bash
+sed -i '' "s/open(filename, 'rU')/open(filename, 'r')/" \
+    .venv/lib/python3.11/site-packages/surface_crns/readers/manifest_readers.py
+```
+
+(On Linux, drop the empty string after `-i`.)
+
+## Reproducing the paper's experiments
+
+### Stress test (1000 trials)
+
+```bash
+python experiments/stress_test.py
+```
+
+Runs 1000 random instances across 5 grid sizes (5×5 through 15×15) and 4 obstacle densities (0.0 to 0.3). Expected output: `1000 passed, 0 failed`.
+
+### Full experimental sweep
+
+```bash
+python experiments/sweep.py
+python experiments/plot_sweep.py
+```
+
+The first command runs 720 trials (6 grid sizes × 4 densities × 30 trials) and writes `data/sweep.csv`. Takes about 25 seconds on a modern laptop.
+
+The second command produces four scaling plots (`figures/scaling_*.png`, `figures/path_optimality.png`) and a LaTeX summary table.
+
+### Figure snapshots
+
+```bash
+python experiments/generate_figures.py
+```
+
+Captures 4-panel trajectory snapshots (initial, gradient-saturated, descending, REACHED) for 5×5, 10×10, and 15×15 instances. Used in Figure 1 of the paper.
+
+## The construction, in 200 words
+
+The rule set has four families:
+
+1. **Gradient initiation.** The goal `T` converts an adjacent empty cell `O` into a gradient cell `G^(p)` whose parent-pointer `p` is the goal's position label.
+2. **Gradient propagation.** A gradient cell converts adjacent empty cells into new gradient cells, passing down parent-pointers. The gradient spreads across the grid as a BFS-like tree rooted at the goal.
+3. **Agent tagging and movement.** When the agent `A` is adjacent to a gradient cell, it becomes tagged `A^(τ)` where `τ` points toward the gradient neighbor. A tagged agent then moves onto its tagged neighbor (Family 3b), inheriting the gradient's parent-pointer as its new tag. The agent thus follows the parent-pointer chain upstream.
+4. **Termination.** Agent adjacent to goal → both become `REACHED`.
+
+Orientation symmetry is broken by a repeating 3×3 position-label tiling (Clamons et al., 2020), so that rules can match on specific (source, target) position pairs without relying on intrinsic directionality in the model.
+
+## Citation
+
+```bibtex
+@misc{gopa2026motion,
+  author = {Asray Gopa},
+  title  = {Formalizing Motion Planning on Surface Chemical Reaction Networks: Construction, Complexity, and Shortest-Path Guarantees},
+  year   = {2026},
+  note   = {Manuscript},
+  url    = {https://github.com/asrayg/motion-planning-surface-crns}
+}
+```
+
+## License
+
+MIT. See `LICENSE`.
+
+## Acknowledgments
+
+This work builds on the surface CRN formalism of Qian & Winfree and the simulator of Clamons, Qian, & Winfree. Gratitude to those authors for both the model and the open problem that motivated this paper.

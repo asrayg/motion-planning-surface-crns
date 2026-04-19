@@ -46,18 +46,6 @@
 \crefname{theorem}{Theorem}{Theorems}
 \Crefname{theorem}{Theorem}{Theorems}
 
-\theoremstyle{plain}
-\newtheorem{theorem}{Theorem}
-\newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{corollary}[theorem]{Corollary}
-
-\theoremstyle{definition}
-\newtheorem{definition}[theorem]{Definition}
-\newtheorem{problem}[theorem]{Problem}
-
-\theoremstyle{remark}
-\newtheorem{remark}[theorem]{Remark}
-
 \title{Formalizing Motion Planning on Surface Chemical Reaction Networks: \\
 Construction, Complexity, and Shortest-Path Guarantees}
 
@@ -187,7 +175,7 @@ We work within the position-labeled $3 \times 3$ tiling of~\Cref{def:position-la
 The total number of species is $9 \cdot (1 + 1 + 1 + 9 + 9 + 1) + 1 = 199$, which is $O(1)$---a constant independent of the instance $(G, s, t)$.
 
 \begin{remark}
-The seemingly large constant arises from the $9$-way position-label product required to break orientation symmetry (\Cref{def:position-labels}). The number of \emph{content types} is only $6$ (empty, obstacle, goal, untagged agent, tagged agent, gradient, reached). Qualitatively, this construction has comparable species complexity to the $\sim 70{,}000$-species spinning-arrow cellular-automaton emulation of~\cite[\S 3.2]{clamons2020} and is considerably lighter than the $\sim 100$-rule per-cell broadcast-swap-sum emulation of~\cite[\S 3.3]{clamons2020}.
+The seemingly large constant arises from the $9$-way position-label product required to break orientation symmetry (\Cref{def:position-labels}). The number of \emph{content types} is only $7$ (empty, obstacle, goal, untagged agent, tagged agent, gradient, reached). Qualitatively, this construction has comparable species complexity to the $\sim 70{,}000$-species spinning-arrow cellular-automaton emulation of~\cite[\S 3.2]{clamons2020} and is considerably lighter than the $\sim 100$-rule per-cell broadcast-swap-sum emulation of~\cite[\S 3.3]{clamons2020}.
 \end{remark}
 
 \subsection{Transition rules}
@@ -344,7 +332,7 @@ The tagged neighbor is unique when it exists because adjacent sites in the $3 \t
 \begin{lemma}[Local tag validity]
 \label{lem:tag-validity}
 Suppose in a reachable configuration $\sigma$ the agent has species $\mathsf{A}^{(\tau)}_{p_A}$ at site $v$, with tag acquired at some prior time $\tau_0$. Then the tagged neighbor $u$ of the agent (if it exists in $G$) has species $\mathsf{G}^{(q')}_\tau$ for some $q'$, or $\mathsf{T}_\tau$, at all times between $\tau_0$ and the agent's next reaction.
-\end{lemma>
+\end{lemma}
 
 \begin{proof}
 We consider the two ways the agent can have acquired tag $\tau$.
@@ -391,7 +379,7 @@ Between $\tau_0$ and the agent's next reaction, $u$'s species can change only by
 \begin{corollary}[Tagged agent can always progress]
 \label{cor:progress}
 Suppose the agent has species $\mathsf{A}^{(\tau)}_{p_A}$, its tagged neighbor $u$ exists in $G$, and the tag was acquired at $\tau_0$. Then a Family 3b or Family 4 rule is enabled at the agent's site.
-\end{corollary>
+\end{corollary}
 
 \begin{proof}
 By~\Cref{lem:tag-validity}, $u$ has species $\mathsf{G}^{(\cdot)}_\tau$ or $\mathsf{T}_\tau$. Family 3b fires if the former; Family 4 fires if the latter.
@@ -404,7 +392,7 @@ We next show that the gradient eventually covers the entire traversable componen
 \begin{lemma}[Gradient reaches every site]
 \label{lem:gradient-covers}
 Let $G_t \subseteq G$ denote the connected component of $G$ containing $t$. Almost surely, there exists a finite time $\tau_g$ such that for every site $u \in G_t$, $\sigma(\tau_g)(u) \in \{\mathsf{T}_{p(u)}\} \cup \{\mathsf{G}^{(q)}_{p(u)} : q \in \{1, \ldots, 9\}\} \cup \{\mathsf{A}^{(\tau)}_{p(u)} : \tau\} \cup \{\mathsf{A}_{p(u)}\}$.
-\end{lemma>
+\end{lemma}
 
 \begin{proof}
 Define the \emph{frontier} at time $\tau$ as
@@ -425,7 +413,7 @@ Formally, let $C(\tau)$ be the number of sites $u \in G_t$ with $\sigma(\tau)(u)
 \begin{theorem}[Correctness]
 \label{thm:correctness}
 For every goal-reaching instance $(G, s, t)$ with $s$ and $t$ in the same connected component of $G$, starting from $\sigma_0[G, s, t]$, the sCRN reaches a terminal configuration with probability 1. Moreover, the expected time to reach the terminal configuration is finite.
-\end{theorem>
+\end{theorem}
 
 \begin{proof}
 Let $G_s \subseteq G$ be the connected component containing both $s$ and $t$, and let $d = \dist_{G_s}(s, t)$.
@@ -487,7 +475,7 @@ For every goal-reaching instance $(G, s, t)$ with $n = |G|$ and $d = \dist_G(s, 
 \[
 \mathbb{E}[T] \leq \frac{n + d + 1}{\min(\lambda_g, \lambda_a)} + \frac{n + d + 1}{\lambda_g} = O(n + d).
 \]
-\end{theorem>
+\end{theorem}
 
 \begin{proof}
 The bound is a direct consequence of the argument in the proof of~\Cref{thm:correctness}. Recall the accelerated process $Y$ defined there: it fires the same reactions as $X$, except that any Family 2 relabeling triggered by a Family 3b agent move is applied instantaneously.
@@ -502,7 +490,7 @@ Combining: $\mathbb{E}[T_X] \leq (n + d + 1)/\min(\lambda_g, \lambda_a) + (n + d
 \begin{corollary}[Asymptotic bound]
 \label{cor:upper-asymptotic}
 With $\lambda_g, \lambda_a = \Theta(1)$, $\mathbb{E}[T] = O(n + d)$.
-\end{corollary>
+\end{corollary}
 
 The bound separates cleanly into two regimes:
 \begin{itemize}
@@ -514,7 +502,7 @@ In the intermediate regime the two terms are comparable. This matches the empiri
 \begin{remark}[On species and rule complexity]
 \label{rem:complexity}
 Beyond the temporal bound, we note that the sCRN uses $O(1)$ species and $O(1)$ rules in the sense of~\Cref{rem:universal}: the rule set is fixed and independent of the instance. Concretely, $|\Sigma| = 199$ and $|R| = 2{,}430$, both constant in $n$ and $d$. Comparison to related surface CRN constructions: the synchronous cellular automaton emulation in~\cite[\S 3.2]{clamons2020} uses $\sim 70{,}000$ rules to emulate a $3$-state automaton; the broadcast-swap-sum scheme of~\cite[\S 3.3]{clamons2020} uses $\sim 100$ rules per emulated cell. Our construction is comparable in complexity.
-\end{remark>
+\end{remark}
 
 \section{Lower Bounds}
 \label{sec:lower}
@@ -533,7 +521,7 @@ Let $\sCRN = (\Z^2, \Sigma, R)$ be any surface CRN with designated species $\mat
 \mathbb{E}[T] \geq d / (\lambda_{\max} \cdot \Delta),
 \]
 where $d = \dist_G(s, t)$, $\lambda_{\max} = \max_{r \in R} \lambda_r$ is the maximum rate in $R$, and $\Delta$ is the maximum degree in the lattice ($\Delta = 4$ for the 2D grid). In particular, with $\lambda_{\max}, \Delta = \Theta(1)$, $\mathbb{E}[T] = \Omega(d)$.
-\end{theorem>
+\end{theorem}
 
 \begin{proof}
 We use a coupling argument. Consider two instances $I_1 = (G, s, t_1)$ and $I_2 = (G, s, t_2)$ with the same graph $G$ and start $s$, but different goals $t_1 \neq t_2$. Let $d_i = \dist_G(s, t_i)$, and assume $d_1, d_2 \geq d$ for some $d > 0$.
@@ -563,7 +551,7 @@ By the growth bound, $\Gamma(s, \tau) \cap \{t_1, t_2\} = \emptyset$ for all $\t
 \paragraph{Conclusion.} The sCRN cannot terminate at $t_1$ (producing $\mathsf{REACHED}$ at $t_1$) before time $d / (\lambda_{\max} \Delta)$, in either instance. Hence $\mathbb{E}[T_1], \mathbb{E}[T_2] \geq d / (\lambda_{\max} \Delta)$.
 
 Taking $I_1 = (G, s, t)$ yields the claim.
-\end{proof>
+\end{proof}
 
 
 \subsection{Adversary lower bound: \texorpdfstring{$\Omega(n)$}{Ω(n)}}
@@ -578,7 +566,7 @@ Let $\sCRN = (\Z^2, \Sigma, R)$ be any universal-rule-set surface CRN solving~\C
 \mathbb{E}[T] \geq \frac{n - 1}{\lambda_{\max} \cdot \Delta},
 \]
 where $\lambda_{\max} = \max_{r \in R} \lambda_r$ and $\Delta = 4$ is the grid degree. In particular, $\mathbb{E}[T] = \Omega(n)$ on a worst-case instance.
-\end{theorem>
+\end{theorem}
 
 The proof strategy is as follows. We construct a family of $n-1$ instances that share the same graph, start, and initial configuration everywhere \emph{except at a single site: the goal}. We then argue, via a shared-clock coupling, that any correct sCRN must fire its termination reaction at a specific site per instance. For the termination at the goal site in one instance to \emph{not} fire at the same site in another instance, the causal cone around the termination site must distinguish the two instances — which requires it to encompass all candidate goal sites. Causal cones grow at bounded rate, so this takes time $\Omega(n)$.
 
@@ -624,17 +612,17 @@ For any site $v$ and any time $\tau \geq 0$, the expected size of the causal con
 \[
 \mathbb{E}[|\Gamma(v, \tau)|] \leq 1 + \tau \cdot \lambda_{\max} \cdot \Delta.
 \]
-\end{lemma>
+\end{lemma}
 
 \begin{proof}[Proof sketch]
 The causal cone $\Gamma(v, \tau)$ is grown by reactions between sites currently in $\Gamma$ and adjacent sites not yet in $\Gamma$. Each such adjacency admits at most $|R|$ candidate rules; reactions actually fire at rate at most $\lambda_{\max}$ per adjacency (assuming rates are bounded). A site in $\Gamma$ has at most $\Delta$ adjacent sites, so the total rate at which the cone can grow is at most $|\partial \Gamma| \cdot \lambda_{\max} \leq |\Gamma| \cdot \Delta \cdot \lambda_{\max}$.
 
 This gives a linear-growth bound: letting $C(\tau) = \mathbb{E}[|\Gamma(v, \tau)|]$, we have $\frac{d}{d\tau} C(\tau) \leq C(\tau) \cdot \Delta \cdot \lambda_{\max}$ in the worst case, but more usefully the expected number of ``new sites added'' per unit time is bounded by $\Delta \cdot \lambda_{\max}$ regardless of cone size. Integrating, $C(\tau) \leq 1 + \tau \cdot \Delta \cdot \lambda_{\max}$.
-\end{proof>
+\end{proof}
 
 \begin{remark}
 The lemma as stated gives an \emph{additive} growth bound (new sites per unit time), not a multiplicative one. The multiplicative bound $C(\tau) \leq C(0) \cdot e^{\tau \Delta \lambda_{\max}}$ would also hold and would give exponential upper bounds; we use the additive form because it yields a sharper lower bound on termination time, exploiting that each boundary adjacency contributes at most $\lambda_{\max}$ to the cone-growth rate regardless of how many sites are already in the cone.
-\end{remark>
+\end{remark}
 
 \paragraph{Conclusion of~\Cref{thm:lower-n}.}
 Combining the two previous paragraphs: at time $T^{(k)}$, $|\Gamma((k, 0), T^{(k)})| \geq n - 1$. By~\Cref{lem:cone-growth}, $\mathbb{E}[|\Gamma((k, 0), \tau)|] \leq 1 + \tau \cdot \lambda_{\max} \cdot \Delta$. Setting the two bounds consistent: $n - 1 \leq 1 + \mathbb{E}[T^{(k)}] \cdot \lambda_{\max} \cdot \Delta$, giving
@@ -642,11 +630,11 @@ Combining the two previous paragraphs: at time $T^{(k)}$, $|\Gamma((k, 0), T^{(k
 \mathbb{E}[T^{(k)}] \geq \frac{n - 2}{\lambda_{\max} \cdot \Delta}.
 \]
 This holds for every $k \in \{1, \ldots, n-1\}$, so every instance in the family has expected completion time $\Omega(n)$.
-\end{proof>
+\end{proof}
 
 \begin{remark}[On the adversary]
 The instance family $\{I_k\}$ we constructed is essentially a worst-case input: a ``corridor'' where the goal could be anywhere along the line. The sCRN cannot distinguish one candidate goal from another without first exploring most of the corridor. Real-world motion-planning instances — ones where the goal is not adversarially concealed — may complete much faster in practice, as our experiments (\Cref{sec:experiments}) confirm.
-\end{remark>
+\end{remark}
 
 \begin{corollary}[Tight expected time]
 \label{cor:tight}
@@ -655,7 +643,7 @@ Combining~\Cref{thm:upper},~\Cref{thm:lower-d}, and~\Cref{thm:lower-n}, the expe
 \mathbb{E}[T] = \Theta(n + d).
 \]
 Moreover, the bound is tight within the class of universal-rule-set surface CRNs: no such construction can asymptotically improve upon it.
-\end{corollary>
+\end{corollary}
 
 
 
@@ -679,25 +667,23 @@ All Family 1 and Family 2 rules (gradient initiation and propagation) fire at ra
 
 \paragraph{Intuition.} The agent's first reaction — either a Family 3a tagging or a Family 4 direct termination — happens after an Exponential($\lambda_a$) delay from the start. During this delay, the gradient has had time to propagate: the number of gradient-propagation reactions is Poisson-distributed with mean $\lambda_g \cdot \tau$ where $\tau$ is the agent's wait. For $\lambda_g \gg \lambda_a$, the gradient ``typically'' stabilizes before the agent moves.
 
-Formally, the probability that fewer than $k$ gradient reactions fire before the first agent reaction is $\Pr[\text{Binomial}(k, \lambda_g / (\lambda_g + \lambda_a)) < k]$, which is small for $\lambda_g \gg \lambda_a$.
-
 \subsection{Gradient stabilization}
 
 \begin{definition}[Stable gradient configuration]
 \label{def:stable-gradient}
 A configuration $\sigma$ is \emph{gradient-stable} if every site in the connected component $G_t$ containing the goal carries a non-$\mathsf{O}$ species (either $\mathsf{T}$, $\mathsf{G}$, or an agent species), and every gradient cell's parent-pointer induces a BFS tree rooted at $t$.
-\end{definition>
+\end{definition}
 
 \begin{lemma}[Gradient stabilizes in $O(n)$ reactions]
 \label{lem:stabilization-reactions}
 Starting from the initial configuration $\sigma_0[G, s, t]$, the first $|G_t| - 1$ Family 1 and Family 2 reactions collectively fill every site in $G_t$ with a gradient species. After these reactions, the configuration is gradient-stable.
-\end{lemma>
+\end{lemma}
 
 \begin{proof}[Proof sketch]
 Each non-goal site in $G_t$ becomes $\mathsf{G}$ exactly once during initial gradient propagation (before any agent move). The total number of such events is $|G_t| - 1$. Once filled, each $\mathsf{G}$-cell's parent-pointer is determined by the first Family 1 or Family 2 reaction that produced it. Because the producer of $c$ must be a $\mathsf{G}$- or $\mathsf{T}$-cell at the time of production, the parent chain extends to $t$. Whether the resulting chain is a shortest path depends on the order in which reactions fire.
 
 For the gradient to be ``BFS-correct'' (parent-pointers induce shortest paths), a sufficient condition is that each site $v$ is labeled by a reaction whose producer is at minimum BFS-depth among $v$'s neighbors that currently carry a gradient species. This is not automatic, but it holds with high probability when $\lambda_g \gg \lambda_a$, as we show below.
-\end{proof>
+\end{proof}
 
 \subsection{Shortest-path theorem}
 
@@ -711,7 +697,7 @@ The expected completion time satisfies
 \[
 \mathbb{E}[T] = O\left(\frac{n}{\varepsilon} + d\right).
 \]
-\end{theorem>
+\end{theorem}
 
 \begin{proof}
 The agent's path length $L$ equals $d$ if and only if every agent move is along a shortest-path edge (i.e., from a site at BFS-depth $k$ from $t$ to a site at depth $k - 1$). Suboptimal moves occur when the agent follows a parent-pointer that does not lead along a shortest path.
@@ -729,13 +715,11 @@ By standard Poisson race arguments, the probability that gradient propagation al
 
 Rearranging: $\mathbb{E}[L] \cdot (1 - O(\varepsilon)) \leq d$, so $\mathbb{E}[L] \leq d \cdot (1 + O(\varepsilon)) = (1 + O(\varepsilon)) \cdot d$.
 
-\paragraph{Expected time.} The gradient phase fires at rate $\lambda_g = 1/\varepsilon$ per enabled adjacency. Filling $n - 1$ sites at rate $\lambda_g$ gives $\mathbb{E}[T_g] = O(n/\lambda_g) = O(n\varepsilon)$.
-
 \paragraph{Expected number of reactions.} We measure completion time in reactions. The gradient phase fires Family 1 and Family 2 reactions until every traversable site is labeled, requiring $\Theta(n)$ reactions. Under the rate structure $\lambda_g = 1/\varepsilon$, $\lambda_a = 1$, between consecutive agent reactions the expected number of gradient reactions that fire is $\Theta(\lambda_g / \lambda_a) = \Theta(1/\varepsilon)$, so the total gradient-reaction count over the duration of the agent phase is $O(n/\varepsilon)$. Summing with the $O(d)$ agent-move reactions gives $\mathbb{E}[T] = O(n/\varepsilon + d)$ reactions.
 
 
 \paragraph{Conclusion.} $\mathbb{E}[L] \leq (1 + O(\varepsilon)) d$ and $\mathbb{E}[T] = O(n/\varepsilon + d)$ in reactions.
-\end{proof>
+\end{proof}
 
 \begin{corollary}[Trade-off curve]
 \label{cor:epsilon-tradeoff}
@@ -745,7 +729,7 @@ The sCRN construction admits a continuum of trade-offs:
     \item $\varepsilon \to 0$: $\mathbb{E}[L] \to d$ (exactly optimal), but $\mathbb{E}[T] \to \infty$.
     \item $\varepsilon = 1/\sqrt{n}$: $\mathbb{E}[L] \leq (1 + 1/\sqrt{n}) d$, $\mathbb{E}[T] = O(n^{3/2} + d)$.
 \end{itemize}
-\end{corollary>
+\end{corollary}
 
 \section{Empirical Validation}
 \label{sec:experiments}
