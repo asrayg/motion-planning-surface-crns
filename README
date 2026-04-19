@@ -1,41 +1,78 @@
+
 # Motion Planning on Surface Chemical Reaction Networks
 
-This repository contains the construction, simulator experiments, and empirical validation for the paper:
 
-**Formalizing Motion Planning on Surface Chemical Reaction Networks: Construction, Complexity, and Shortest-Path Guarantees**
-Asray Gopa, Iowa State University, 2026.
 
-The paper gives the first rigorous treatment of motion planning in the surface CRN model of Qian & Winfree (2014) and Clamons, Qian, & Winfree (2020), resolving an open problem posed in the latter. We prove matching upper and lower bounds $\mathbb{E}[T] = \Theta(n+d)$ on expected completion time for goal-reaching with obstacles, and give a rate-modulated variant with near-optimal expected path length.
+This repository contains the construction, simulation experiments, and empirical validation for the paper:
+
+***Formalizing Motion Planning on Surface Chemical Reaction Networks: Construction, Complexity, and Shortest-Path Guarantees***
+*Asray Gopa, Iowa State University, 2026*
 
 ## Overview
 
-A *surface chemical reaction network* is a grid whose sites carry chemical species, with reactions firing locally between adjacent sites at specified rates. The *motion-planning problem* asks: can a fixed rule set drive an "agent" molecule to a "goal" molecule across a grid with arbitrary obstacle layouts, using only local chemistry?
+A **surface chemical reaction network (surface CRN)** is a grid where each site holds a chemical species, and reactions occur locally between adjacent sites at specified rates.
 
-We answer yes, with:
+The **motion planning problem** asks:
 
-- A universal rule set: 199 species, 2,430 rules, independent of the instance.
-- Correctness with probability 1 on every input, proven via a local invariant on the agent's tag.
-- Expected completion time $\Theta(n+d)$, where $n$ is the number of traversable sites and $d$ is the shortest-path distance.
-- A shortest-path variant with expected path length $(1+\varepsilon)\cdot d$ at the cost of $O(n/\varepsilon + d)$ expected reactions.
+> Can a fixed rule set drive an “agent” molecule to a “goal” molecule across a grid with arbitrary obstacles, using only local chemical interactions?
 
-## Repository structure
+### Key Results
 
+This work answers **yes**, with:
+
+* **Universal rule set**
+
+  * 199 species
+  * 2,430 rules
+  * Independent of the instance
+
+* **Correctness**
+
+  * Guaranteed with probability 1
+  * Proven via a local invariant on the agent’s tag
+
+* **Time complexity**
+
+  * Expected completion time:
+    [
+    \mathbb{E}[T] = \Theta(n + d)
+    ]
+    where:
+
+    * ( n ): number of traversable sites
+    * ( d ): shortest-path distance
+
+* **Shortest-path variant**
+
+  * Expected path length:
+    [
+    (1 + \varepsilon)\cdot d
+    ]
+  * Expected reactions:
+    [
+    O\left(\frac{n}{\varepsilon} + d\right)
+    ]
+
+## Repository Structure
+
+```bash
 motion-planning-surface-crns/
-├── manifests/          # Surface CRN manifest files (generated)
-├── experiments/        # Python scripts for experiments
-│   ├── gen_manifest.py         # Manifest generator for any grid size/obstacle layout
-│   ├── run_instrumented.py     # Single-instance simulation with full reaction logging
-│   ├── stress_test.py          # 1000-trial correctness validation
-│   ├── generate_figures.py     # Snapshot generation for paper figures
-│   ├── sweep.py                # Full experimental sweep (720 trials)
-│   └── plot_sweep.py           # Scaling plots and LaTeX table from sweep data
-├── data/               # CSV outputs from sweep.py
-├── figures/            # PNG outputs from generate_figures.py and plot_sweep.py
+├── manifests/          # Generated surface CRN manifest files
+├── experiments/        # Python experiment scripts
+│   ├── gen_manifest.py
+│   ├── run_instrumented.py
+│   ├── stress_test.py
+│   ├── generate_figures.py
+│   ├── sweep.py
+│   └── plot_sweep.py
+├── data/               # CSV outputs from experiments
+├── figures/            # Generated plots and visualizations
 └── README.md
+```
 
 ## Installation
 
-Requires Python 3.11+. Clone and set up a virtual environment:
+Requires **Python 3.11+**
 
 ```bash
 git clone https://github.com/asrayg/motion-planning-surface-crns.git
@@ -45,54 +82,103 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The `surface_crns` package requires a small patch for Python 3.11 compatibility:
+### Compatibility Patch
+
+The `surface_crns` package requires a small fix for Python 3.11:
 
 ```bash
 sed -i '' "s/open(filename, 'rU')/open(filename, 'r')/" \
     .venv/lib/python3.11/site-packages/surface_crns/readers/manifest_readers.py
 ```
 
-(On Linux, drop the empty string after `-i`.)
+> On Linux, remove the empty string after `-i`.
 
-## Reproducing the paper's experiments
+## Reproducing Experiments
 
-### Stress test (1000 trials)
+### Stress Test (1000 Trials)
 
 ```bash
 python experiments/stress_test.py
 ```
 
-Runs 1000 random instances across 5 grid sizes (5×5 through 15×15) and 4 obstacle densities (0.0 to 0.3). Expected output: `1000 passed, 0 failed`.
+* Runs 1000 random instances
+* Grid sizes: 5×5 → 15×15
+* Obstacle densities: 0.0 → 0.3
 
-### Full experimental sweep
+**Expected output:**
+
+```
+1000 passed, 0 failed
+```
+
+### Full Experimental Sweep
 
 ```bash
 python experiments/sweep.py
 python experiments/plot_sweep.py
 ```
 
-The first command runs 720 trials (6 grid sizes × 4 densities × 30 trials) and writes `data/sweep.csv`. Takes about 25 seconds on a modern laptop.
+* **720 trials total**
 
-The second command produces four scaling plots (`figures/scaling_*.png`, `figures/path_optimality.png`) and a LaTeX summary table.
+  * 6 grid sizes × 4 densities × 30 trials
+* Outputs:
 
-### Figure snapshots
+  * `data/sweep.csv`
+  * Scaling plots in `figures/`
+  * LaTeX summary table
+
+~25 seconds on a modern laptop
+
+### Figure Snapshots
 
 ```bash
 python experiments/generate_figures.py
 ```
 
-Captures 4-panel trajectory snapshots (initial, gradient-saturated, descending, REACHED) for 5×5, 10×10, and 15×15 instances. Used in Figure 1 of the paper.
+Generates 4-stage trajectory visuals:
 
-## The construction, in 200 words
+* Initial
+* Gradient saturated
+* Descending
+* REACHED
 
-The rule set has four families:
+For grid sizes:
 
-1. **Gradient initiation.** The goal `T` converts an adjacent empty cell `O` into a gradient cell `G^(p)` whose parent-pointer `p` is the goal's position label.
-2. **Gradient propagation.** A gradient cell converts adjacent empty cells into new gradient cells, passing down parent-pointers. The gradient spreads across the grid as a BFS-like tree rooted at the goal.
-3. **Agent tagging and movement.** When the agent `A` is adjacent to a gradient cell, it becomes tagged `A^(τ)` where `τ` points toward the gradient neighbor. A tagged agent then moves onto its tagged neighbor (Family 3b), inheriting the gradient's parent-pointer as its new tag. The agent thus follows the parent-pointer chain upstream.
-4. **Termination.** Agent adjacent to goal → both become `REACHED`.
+* 5×5
+* 10×10
+* 15×15
 
-Orientation symmetry is broken by a repeating 3×3 position-label tiling (Clamons et al., 2020), so that rules can match on specific (source, target) position pairs without relying on intrinsic directionality in the model.
+## Construction (Quick Intuition)
+
+The system is built from four rule families:
+
+### 1. Gradient Initiation
+
+* Goal `T` converts adjacent empty cells `O` → gradient cells `G^(p)`
+* Parent pointer `p` encodes direction toward goal
+
+### 2. Gradient Propagation
+
+* Gradient spreads outward (BFS-style)
+* Each new cell inherits a parent pointer
+
+### 3. Agent Movement
+
+* Agent `A` becomes tagged `A^(τ)` near gradient
+* Tag points toward gradient neighbor
+* Agent follows parent pointers upstream toward goal
+
+### 4. Termination
+
+* When agent reaches goal:
+
+```
+A + T → REACHED
+```
+
+### Symmetry Breaking
+
+A repeating **3×3 position-label tiling** is used to encode direction without global orientation, following Clamons et al. (2020).
 
 ## Citation
 
@@ -106,10 +192,16 @@ Orientation symmetry is broken by a repeating 3×3 position-label tiling (Clamon
 }
 ```
 
+
 ## License
 
-MIT. See `LICENSE`.
+MIT — see `LICENSE`
 
 ## Acknowledgments
 
-This work builds on the surface CRN formalism of Qian & Winfree and the simulator of Clamons, Qian, & Winfree. Gratitude to those authors for both the model and the open problem that motivated this paper.
+This work builds on:
+
+* Qian & Winfree (surface CRN formalism)
+* Clamons, Qian, & Winfree (simulator + open problem)
+
+Appreciation to them for both the framework and the problem that motivated this work.
