@@ -4,23 +4,17 @@ The rule set is universal (independent of grid size); only the INIT_STATE varies
 """
 
 import sys
-from itertools import product
 import random
+from collections import deque
+from itertools import product
 
-# 3x3 position tiling: p(x,y) = 3*(y%3) + (x%3) + 1, values in {1..9}
 POSITIONS = list(range(1, 10))
 
 def pos(x, y):
     return 3 * (y % 3) + (x % 3) + 1
 
-# Adjacency in the 3x3 tiling: which position labels can be neighbors?
-# Two positions p, p' are "adjacency-compatible" if there exist sites (x,y) and (x',y')
-# that are grid-neighbors with pos(x,y)=p, pos(x',y')=p'.
-# For the full Z^2 tiling, every pair (p, p') with p, p' in 1..9 is adjacency-compatible
-# somewhere (because the tiling repeats). So all 9x9=81 ordered pairs are valid.
-# But within a specific 3x3 block, the adjacencies are constrained.
-# For rule generality, we allow all 81 ordered pairs.
 ADJACENT_PAIRS = [(p, q) for p in POSITIONS for q in POSITIONS]
+
 
 def emit_colormap():
     lines = ["!START_COLORMAP"]
@@ -36,88 +30,26 @@ def emit_colormap():
     lines.append("!END_COLORMAP")
     return "\n".join(lines)
 
-def emit_init_NxN_random(n, obstacle_density=0.2, seed=42, max_retries=100):
-    for attempt in range(max_retries):
-        rng = random.Random(seed + attempt)
-        obstacles = set()
-        for y in range(n):
-            for x in range(n):
-                if (x, y) in [(0, 0), (n-1, n-1)]:
-                    continue
-                if rng.random() < obstacle_density:
-                    obstacles.add((x, y))
-        if is_reachable(n, obstacles):
-            break
-    else:
-        raise RuntimeError(f"Couldn't generate feasible {n}x{n} instance with density {obstacle_density}")
-
-    lines = ["!START_INIT_STATE"]
-    rows = []
-    for y in range(n):
-        row = []
-        for x in range(n):
-            p = pos(x, y)
-            if (x, y) == (0, 0):
-                row.append(f"A{p}")
-            elif (x, y) == (n-1, n-1):
-                row.append(f"T{p}")
-            elif (x, y) in obstacles:
-                row.append("X")
-            else:
-                row.append(f"O{p}")
-        rows.append(" ".join(row))
-    lines.extend(rows)
-    lines.append("!END_INIT_STATE")
-    return "\n".join(lines)
-
-
-def is_reachable(n, obstacles, start=(0,0), goal=None):
-    if goal is None:
-        goal = (n-1, n-1)
-    from collections import deque
-    visited = {start}
-    q = deque([start])
-    while q:
-        x, y = q.popleft()
-        if (x, y) == goal:
-            return True
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nx, ny = x+dx, y+dy
-            if (0 <= nx < n and 0 <= ny < n
-                and (nx, ny) not in obstacles
-                and (nx, ny) not in visited):
-                visited.add((nx, ny))
-                q.append((nx, ny))
-    return False
 
 def emit_rules():
     lines = ["!START_TRANSITION_RULES"]
-    rate_fast = 10  # gradient
-    rate_slow = 1   # agent
+    rate_fast = 10
+    rate_slow = 1
 
-    # Family 1: Gradient init from goal
-    # T_p + O_p' -> T_p + G(p)_p'
     lines.append("# Family 1: Gradient initiation from goal")
     for p, q in ADJACENT_PAIRS:
         lines.append(f"T{p} + O{q} -> T{p} + G{p}_{q} ({rate_fast})")
 
-    # Family 2: Gradient propagation
-    # G(par)_p + O_p' -> G(par)_p + G(p)_p'
     lines.append("# Family 2: Gradient propagation")
     for par in POSITIONS:
         for p, q in ADJACENT_PAIRS:
             lines.append(f"G{par}_{p} + O{q} -> G{par}_{p} + G{p}_{q} ({rate_fast})")
 
-    # Family 3a: Agent tagging (untagged agent + gradient neighbor)
-    # A_pA + G(par)_pG -> At(pG)_pA + G(par)_pG
     lines.append("# Family 3a: Agent tagging")
     for par in POSITIONS:
         for pA, pG in ADJACENT_PAIRS:
             lines.append(f"A{pA} + G{par}_{pG} -> At{pG}_{pA} + G{par}_{pG} ({rate_slow})")
 
-    # Family 3b: Tagged agent move
-    # At(tag)_pA + G(par)_pG -> O_pA + At(par)_pG   IF tag == pG
-    # (agent only moves onto its tagged neighbor)
     lines.append("# Family 3b: Tagged agent move")
     for tag in POSITIONS:
         for par in POSITIONS:
@@ -125,25 +57,21 @@ def emit_rules():
                 if tag == pG:
                     lines.append(f"At{tag}_{pA} + G{par}_{pG} -> O{pA} + At{par}_{pG} ({rate_slow})")
 
-    # Family 4: Termination (tagged agent adjacent to goal, with correct tag)
-    # At(tag)_pA + T_pT -> R_pA + R_pT   IF tag == pT
-    lines.append("# Family 4: Termination")
+    lines.append("# Family 4: Termination (tagged)")
     for tag in POSITIONS:
         for pA, pT in ADJACENT_PAIRS:
             if tag == pT:
                 lines.append(f"At{tag}_{pA} + T{pT} -> R{pA} + R{pT} ({rate_slow})")
 
-    # Also: untagged agent directly adjacent to goal should terminate too
-    # A_pA + T_pT -> R_pA + R_pT
-    lines.append("# Family 4b: Direct termination (untagged agent adjacent to goal)")
+    lines.append("# Family 4b: Direct termination (untagged)")
     for pA, pT in ADJACENT_PAIRS:
         lines.append(f"A{pA} + T{pT} -> R{pA} + R{pT} ({rate_slow})")
 
     lines.append("!END_TRANSITION_RULES")
     return "\n".join(lines)
 
+
 def emit_init_3x3_simple():
-    """3x3 grid, agent at (0,0), goal at (2,2), no obstacles."""
     lines = ["!START_INIT_STATE"]
     rows = []
     for y in range(3):
@@ -161,8 +89,8 @@ def emit_init_3x3_simple():
     lines.append("!END_INIT_STATE")
     return "\n".join(lines)
 
+
 def emit_init_5x5_with_obstacle():
-    """5x5 grid, agent at (0,0), goal at (4,4), obstacle at (2,2)."""
     lines = ["!START_INIT_STATE"]
     rows = []
     for y in range(5):
@@ -182,35 +110,117 @@ def emit_init_5x5_with_obstacle():
     lines.append("!END_INIT_STATE")
     return "\n".join(lines)
 
+
+def is_reachable(n, obstacles, start=(0, 0), goal=None):
+    if goal is None:
+        goal = (n - 1, n - 1)
+    visited = {start}
+    q = deque([start])
+    while q:
+        x, y = q.popleft()
+        if (x, y) == goal:
+            return True
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nx, ny = x + dx, y + dy
+            if (0 <= nx < n and 0 <= ny < n
+                    and (nx, ny) not in obstacles
+                    and (nx, ny) not in visited):
+                visited.add((nx, ny))
+                q.append((nx, ny))
+    return False
+
+
+def emit_init_NxN_random(n, obstacle_density=0.2, seed=42, max_retries=200):
+    obstacles = None
+    for attempt in range(max_retries):
+        rng = random.Random(seed + attempt)
+        candidate = set()
+        for y in range(n):
+            for x in range(n):
+                if (x, y) in [(0, 0), (n - 1, n - 1)]:
+                    continue
+                if rng.random() < obstacle_density:
+                    candidate.add((x, y))
+        if is_reachable(n, candidate):
+            obstacles = candidate
+            break
+    if obstacles is None:
+        raise RuntimeError(
+            f"Couldn't generate feasible {n}x{n} instance with density {obstacle_density}"
+        )
+
+    lines = ["!START_INIT_STATE"]
+    rows = []
+    for y in range(n):
+        row = []
+        for x in range(n):
+            p = pos(x, y)
+            if (x, y) == (0, 0):
+                row.append(f"A{p}")
+            elif (x, y) == (n - 1, n - 1):
+                row.append(f"T{p}")
+            elif (x, y) in obstacles:
+                row.append("X")
+            else:
+                row.append(f"O{p}")
+        rows.append(" ".join(row))
+    lines.extend(rows)
+    lines.append("!END_INIT_STATE")
+    return "\n".join(lines)
+
+
 HEADER = """# Motion planning on surface CRNs - auto-generated manifest
 pixels_per_node    = 50
-speedup_factor     = 1
-max_duration       = 500
+speedup_factor     = 5
+max_duration       = 2000
 node_display       = Color
 rng_seed           = 42
 """
 
 
+def parse_grid_spec(spec):
+    """
+    Grid spec format:
+      "3x3"                    -> hardcoded 3x3 simple
+      "5x5"                    -> hardcoded 5x5 with center obstacle
+      "NxN_random"             -> NxN random, density 0.2, seed 42
+      "NxN_random_D"           -> NxN random, density D, seed 42
+      "NxN_random_D_S"         -> NxN random, density D, seed S
+    """
+    if spec == "3x3":
+        return ("3x3", None)
+    if spec == "5x5":
+        return ("5x5", None)
+    if "_random" in spec:
+        parts = spec.split("_")
+        size_part = parts[0]  # e.g. "15x15"
+        n = int(size_part.split("x")[0])
+        density = 0.2
+        seed = 42
+        if len(parts) >= 3:
+            density = float(parts[2])
+        if len(parts) >= 4:
+            seed = int(parts[3])
+        return ("random", {"n": n, "obstacle_density": density, "seed": seed})
+    raise ValueError(f"Unknown grid spec: {spec}")
+
+
 def main():
-    grid = sys.argv[1] if len(sys.argv) > 1 else "3x3"
+    grid_spec = sys.argv[1] if len(sys.argv) > 1 else "3x3"
+    kind, params = parse_grid_spec(grid_spec)
+
     print(HEADER)
     print(emit_colormap())
     print()
     print(emit_rules())
     print()
-    if grid == "3x3":
+    if kind == "3x3":
         print(emit_init_3x3_simple())
-    elif grid == "5x5":
+    elif kind == "5x5":
         print(emit_init_5x5_with_obstacle())
-    elif grid.endswith("_random"):
-        # e.g., "10x10_random" or "10x10_random_0.3"
-        parts = grid.split("_")
-        n = int(parts[0].split("x")[0])
-        density = 0.2 if len(parts) < 3 else float(parts[2])
-        seed = 42 if len(parts) < 4 else int(parts[3])
-        print(emit_init_NxN_random(n, obstacle_density=density, seed=seed))
-    else:
-        raise ValueError(f"Unknown grid: {grid}")
+    elif kind == "random":
+        print(emit_init_NxN_random(**params))
+
 
 if __name__ == "__main__":
     main()
