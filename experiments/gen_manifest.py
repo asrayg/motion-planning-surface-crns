@@ -5,6 +5,7 @@ The rule set is universal (independent of grid size); only the INIT_STATE varies
 
 import sys
 from itertools import product
+import random
 
 # 3x3 position tiling: p(x,y) = 3*(y%3) + (x%3) + 1, values in {1..9}
 POSITIONS = list(range(1, 10))
@@ -34,6 +35,60 @@ def emit_colormap():
     lines.append("{reached} " + ", ".join(f"R{p}" for p in POSITIONS) + ": (0, 0, 255)")
     lines.append("!END_COLORMAP")
     return "\n".join(lines)
+
+def emit_init_NxN_random(n, obstacle_density=0.2, seed=42, max_retries=100):
+    for attempt in range(max_retries):
+        rng = random.Random(seed + attempt)
+        obstacles = set()
+        for y in range(n):
+            for x in range(n):
+                if (x, y) in [(0, 0), (n-1, n-1)]:
+                    continue
+                if rng.random() < obstacle_density:
+                    obstacles.add((x, y))
+        if is_reachable(n, obstacles):
+            break
+    else:
+        raise RuntimeError(f"Couldn't generate feasible {n}x{n} instance with density {obstacle_density}")
+
+    lines = ["!START_INIT_STATE"]
+    rows = []
+    for y in range(n):
+        row = []
+        for x in range(n):
+            p = pos(x, y)
+            if (x, y) == (0, 0):
+                row.append(f"A{p}")
+            elif (x, y) == (n-1, n-1):
+                row.append(f"T{p}")
+            elif (x, y) in obstacles:
+                row.append("X")
+            else:
+                row.append(f"O{p}")
+        rows.append(" ".join(row))
+    lines.extend(rows)
+    lines.append("!END_INIT_STATE")
+    return "\n".join(lines)
+
+
+def is_reachable(n, obstacles, start=(0,0), goal=None):
+    if goal is None:
+        goal = (n-1, n-1)
+    from collections import deque
+    visited = {start}
+    q = deque([start])
+    while q:
+        x, y = q.popleft()
+        if (x, y) == goal:
+            return True
+        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nx, ny = x+dx, y+dy
+            if (0 <= nx < n and 0 <= ny < n
+                and (nx, ny) not in obstacles
+                and (nx, ny) not in visited):
+                visited.add((nx, ny))
+                q.append((nx, ny))
+    return False
 
 def emit_rules():
     lines = ["!START_TRANSITION_RULES"]
@@ -147,6 +202,13 @@ def main():
         print(emit_init_3x3_simple())
     elif grid == "5x5":
         print(emit_init_5x5_with_obstacle())
+    elif grid.endswith("_random"):
+        # e.g., "10x10_random" or "10x10_random_0.3"
+        parts = grid.split("_")
+        n = int(parts[0].split("x")[0])
+        density = 0.2 if len(parts) < 3 else float(parts[2])
+        seed = 42 if len(parts) < 4 else int(parts[3])
+        print(emit_init_NxN_random(n, obstacle_density=density, seed=seed))
     else:
         raise ValueError(f"Unknown grid: {grid}")
 
